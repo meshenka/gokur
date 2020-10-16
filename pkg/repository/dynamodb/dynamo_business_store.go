@@ -21,25 +21,28 @@ func NewDynamoBusinessStore() repository.BusinessStore {
 }
 
 func (store *dynamodbBusinessStore) Init() error {
-	// Create table Movies
+	// Create table Business
 	tableName := "Business"
+
+	svc := store.getSession()
+	inputList := &dynamodb.ListTablesInput{}
+
+	result, err := svc.ListTables(inputList)
+	if err != nil {
+		return err
+	}
+
+	for _, n := range result.TableNames {
+		if *n == tableName {
+			log.Info("table already exists")
+			return nil
+		}
+	}
 
 	input := &dynamodb.CreateTableInput{
 		AttributeDefinitions: []*dynamodb.AttributeDefinition{
 			{
-				AttributeName: aws.String("lat"),
-				AttributeType: aws.String("N"),
-			},
-			{
-				AttributeName: aws.String("long"),
-				AttributeType: aws.String("N"),
-			},
-			{
 				AttributeName: aws.String("name"),
-				AttributeType: aws.String("S"),
-			},
-			{
-				AttributeName: aws.String("address"),
 				AttributeType: aws.String("S"),
 			},
 			{
@@ -49,24 +52,12 @@ func (store *dynamodbBusinessStore) Init() error {
 		},
 		KeySchema: []*dynamodb.KeySchemaElement{
 			{
-				AttributeName: aws.String("name"),
-				KeyType:       aws.String("HASH"),
-			},
-			{
 				AttributeName: aws.String("id"),
-				KeyType:       aws.String("RANGE"),
-			},
-			{
-				AttributeName: aws.String("lat"),
-				KeyType:       aws.String("RANGE"),
-			},
-			{
-				AttributeName: aws.String("long"),
-				KeyType:       aws.String("RANGE"),
-			},
-			{
-				AttributeName: aws.String("address"),
 				KeyType:       aws.String("HASH"),
+			},
+			{
+				AttributeName: aws.String("name"),
+				KeyType:       aws.String("RANGE"),
 			},
 		},
 		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
@@ -76,14 +67,13 @@ func (store *dynamodbBusinessStore) Init() error {
 		TableName: aws.String(tableName),
 	}
 
-	svc := store.getSession()
+	log.WithField("tableName", tableName).Info("Created the table")
 
-	_, err := svc.CreateTable(input)
+	_, err = svc.CreateTable(input)
 	if err != nil {
 		return err
 	}
 
-	log.WithField("tableName", tableName).Info("Created the table")
 	return nil
 }
 
